@@ -1,4 +1,5 @@
+
 ## License
 
-- Portions of this repository are licensed under the [MIT License](./LICENSE) (from the original MCP project by Anthropic, PBC).  
-- All other code and modifications © 2025 [Your Name], All Rights Reserved.
+- Portions © 2024 Anthropic, PBC under the MIT License (see [LICENSE](./LICENSE)).
+- All other code and modifications © 2025 Sreenija Kurra, All Rights Reserved.
