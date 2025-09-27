@@ -2,7 +2,6 @@ import express from "express";
 import open from "open";
 import { google } from "googleapis";
 import dotenv from "dotenv";
-import { z } from "zod";
 import OpenAI from "openai";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -10,6 +9,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 
 dotenv.config();
 
+// --- OpenAI client ---
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -17,6 +17,7 @@ const openai = new OpenAI({
 const PORT = 4153;
 const REDIRECT_URI = `http://localhost:${PORT}/oauth2callback`;
 
+// --- Google OAuth client ---
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
@@ -27,7 +28,7 @@ let tokens: any = null;
 
 const app = express();
 app.use(express.json());
-app.use(express.static("src"));
+app.use(express.static("src")); // serve chatbot.html + js
 
 // --- OAuth flow ---
 app.get("/auth", async (_req, res) => {
@@ -49,6 +50,7 @@ app.get("/oauth2callback", async (req, res) => {
 
 // --- API endpoints ---
 
+// List events
 app.post("/api/listEvents", async (req, res) => {
   try {
     const events = await listEvents(req.body.maxResults || 5);
@@ -58,6 +60,7 @@ app.post("/api/listEvents", async (req, res) => {
   }
 });
 
+// Create event
 app.post("/api/createEvent", async (req, res) => {
   try {
     const { summary, start, end } = req.body;
@@ -68,6 +71,7 @@ app.post("/api/createEvent", async (req, res) => {
   }
 });
 
+// Update event
 app.post("/api/updateEvent", async (req, res) => {
   try {
     const { eventId, summary, start, end } = req.body;
@@ -75,6 +79,18 @@ app.post("/api/updateEvent", async (req, res) => {
     res.json(event);
   } catch (err) {
     res.status(500).json({ error: "Failed to update event" });
+  }
+});
+
+// Delete event
+app.post("/api/deleteEvent", async (req, res) => {
+  try {
+    const { eventId } = req.body;
+    if (!eventId) return res.status(400).json({ error: "Missing eventId" });
+    const result = await deleteEvent(eventId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete event" });
   }
 });
 
@@ -89,7 +105,7 @@ app.post("/api/chat", async (req, res) => {
         {
           role: "system",
           content:
-            "You are a calendar assistant. Classify the user's intent into one of: list_events, create_event, update_event. Chat with the user about events and respond with the appropriate intent.",
+            "You are a calendar assistant. Classify the user's intent into one of: list_events, create_event, update_event, delete_event, or chat.",
         },
         { role: "user", content: message },
       ],
@@ -99,7 +115,7 @@ app.post("/api/chat", async (req, res) => {
 
     if (intent === "list_events") {
       const events = await listEvents();
-      return res.json({ reply: JSON.stringify(events, null, 2) });
+      return res.json({ reply: events });
     }
 
     if (intent === "create_event") {
@@ -117,6 +133,13 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
+    if (intent === "delete_event") {
+      return res.json({
+        reply: "Use the [Delete] button on an event to remove it.",
+      });
+    }
+
+    // Fallback: just chat
     const chatResp = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -150,7 +173,7 @@ async function listEvents(maxResults = 5) {
     orderBy: "startTime",
   });
 
-  return (response.data.items || []).map(ev => ({
+  return (response.data.items || []).map((ev) => ({
     id: ev.id,
     summary: ev.summary,
     start: ev.start?.dateTime || ev.start?.date,
@@ -202,6 +225,22 @@ async function updateEvent(
     success: true,
     summary: response.data.summary,
     link: response.data.htmlLink,
+  };
+}
+
+async function deleteEvent(eventId: string) {
+  if (!tokens) throw new Error("Not authenticated. Visit /auth");
+  oauth2Client.setCredentials(tokens);
+  const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+  await calendar.events.delete({
+    calendarId: "primary",
+    eventId,
+  });
+
+  return {
+    success: true,
+    message: "Event deleted successfully",
   };
 }
 

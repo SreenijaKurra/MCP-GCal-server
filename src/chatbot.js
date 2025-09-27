@@ -58,8 +58,33 @@ function appendMessage(text, sender, withButtons = false, eventId = null) {
       }
     };
 
+    // Delete button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.onclick = () => {
+      if (confirm("Are you sure you want to delete this event?")) {
+        fetch("/api/deleteEvent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventId }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              appendMessage("🗑️ Event deleted successfully.", "bot");
+            } else {
+              appendMessage("❌ Failed to delete event.", "bot");
+            }
+          })
+          .catch(() => {
+            appendMessage("❌ Error deleting event.", "bot");
+          });
+      }
+    };
+
     btnContainer.appendChild(updateBtn);
     btnContainer.appendChild(createBtn);
+    btnContainer.appendChild(deleteBtn);
     msgDiv.appendChild(btnContainer);
   }
 
@@ -78,7 +103,7 @@ chatForm.addEventListener("submit", async (e) => {
   userInput.focus();
 
   // Bot loading placeholder
-  const loadingDiv = appendMessage("...", "bot");
+  appendMessage("...", "bot");
 
   try {
     const res = await fetch("/api/chat", {
