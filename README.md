@@ -18,7 +18,7 @@ This server acts as a thin layer between an LLM and the Google Calendar API: the
   - Delete or cancel events.
   - Query upcoming events for a time window (e.g. “today”, “this week”).
 
-- **“Proprietary extensions”**
+- **Proprietary extensions**
   - Opinionated higher-level tools for scheduling workflows
     - e.g. helpers for:
       - Checking availability across a time range.
@@ -26,14 +26,14 @@ This server acts as a thin layer between an LLM and the Google Calendar API: the
       - Creating events with sensible defaults from natural language inputs.
   - Structured responses tuned for RAG/agent workflows rather than generic API dumps.
 
-- **TypeScript + Node.js**
+- TypeScript + Node.js
   - Strongly-typed server implementation.
   - Clear separation between:
     - MCP protocol wiring.
     - Google Calendar API integration.
     - Auth/credential handling.
 
-- **Local-first authentication**
+- Local-first authentication
   - Uses your own Google Cloud project + OAuth credentials.
   - Tokens are stored locally (no external backend).
   - You keep control of your data and credentials.
